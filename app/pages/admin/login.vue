@@ -16,7 +16,7 @@ async function signIn(event: FormSubmitEvent<Schema>) {
   loading.value = true
   error.value = undefined
   try {
-    await $fetch('/auth/login', { method: 'POST', body: event.data })
+    await $fetch('/auth/admin/login', { method: 'POST', body: event.data })
     const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/admin') ? route.query.redirect : '/admin'
     await navigateTo(redirect)
   }

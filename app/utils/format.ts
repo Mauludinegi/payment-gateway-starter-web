@@ -4,6 +4,7 @@ const idr = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR',
 const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' })
 const shortDateTime = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })
 const shortDay = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'Asia/Jakarta' })
+const date = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })
 
 export function formatIDR(amount: number) {
   return idr.format(amount)
@@ -15,6 +16,10 @@ export function formatDateTime(value: string | null | undefined) {
 
 export function formatShortDateTime(value: string | null | undefined) {
   return value ? shortDateTime.format(new Date(value)) : '—'
+}
+
+export function formatDate(value: string) {
+  return date.format(new Date(value))
 }
 
 export function formatDay(isoDate: string) {

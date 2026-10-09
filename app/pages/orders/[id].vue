@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import type { Order } from '~/types/api'
 
+definePageMeta({ middleware: 'auth' })
+
 const route = useRoute()
 const id = route.params.id as string
 const toast = useToast()
-const history = useOrderHistory()
 
 const { data: order, error, refresh } = await useFetch<Order>(`/api/orders/${id}`, { key: `order-${id}` })
+if (error.value?.statusCode === 401) {
+  useCookie('signed_in').value = null
+  useAuth().user.value = null
+  await navigateTo({ path: '/login', query: { redirect: route.fullPath } })
+}
 if (error.value?.statusCode === 404) {
   throw createError({ statusCode: 404, statusMessage: 'Order not found', fatal: true })
 }
@@ -20,7 +26,6 @@ const showPicker = computed(() => order.value?.status === 'PENDING_PAYMENT'
 // The webhook updates the order on the server; the page just polls until it changes.
 let poll: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  history.remember(id)
   poll = setInterval(() => {
     if (order.value?.status === 'PENDING_PAYMENT') refresh()
   }, 3000)
@@ -101,7 +106,7 @@ useSeoMeta({ title: () => `${order.value?.reference ?? 'Order'} · Starter Store
               {{ formatIDR(order.amount) }} paid via {{ payment?.channelLabel }} on {{ formatDateTime(order.paidAt) }}.
             </p>
             <div class="mt-6 flex gap-2">
-              <UButton to="/orders" label="My orders" color="neutral" variant="outline" />
+              <UButton to="/account" label="My orders" color="neutral" variant="outline" />
               <UButton to="/" label="Back to the store" />
             </div>
           </div>

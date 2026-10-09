@@ -6,6 +6,15 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Spring Boot backend; the browser never calls it directly, every /api request goes through server/api.
     apiBase: 'http://localhost:8080',
+    // Firebase web config is public by design; Google sign-in only works for domains authorised in the Firebase console.
+    public: {
+      firebase: {
+        apiKey: '',
+        authDomain: '',
+        projectId: '',
+        appId: '',
+      },
+    },
   },
   app: {
     head: {

@@ -56,6 +56,19 @@ export interface Order {
   payment: Payment | null
 }
 
+export interface User {
+  id: string
+  name: string
+  email: string | null
+  pictureUrl: string | null
+  createdAt: string
+}
+
+export interface AuthOptions {
+  google: boolean
+  devLogin: boolean
+}
+
 export interface Page<T> {
   items: T[]
   page: number

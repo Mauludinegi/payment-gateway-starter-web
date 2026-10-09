@@ -6,7 +6,7 @@ import type { CartLine } from '~/composables/useCart'
 
 const { data: products } = useProducts()
 const cart = useCart()
-const history = useOrderHistory()
+const { user, signedIn } = useAuth()
 const toast = useToast()
 
 const rows = computed(() => cart.lines.value
@@ -16,11 +16,10 @@ const total = computed(() => rows.value.reduce((sum, r) => sum + r.product.price
 
 const schema = z.object({
   customerName: z.string().trim().min(2, 'Enter your name').max(100),
-  customerEmail: z.union([z.literal(''), z.email('Enter a valid email')]),
 })
 type Schema = z.output<typeof schema>
 
-const form = reactive<Schema>({ customerName: '', customerEmail: '' })
+const form = reactive<Schema>({ customerName: user.value?.name ?? '' })
 const submitting = ref(false)
 
 async function checkout(event: FormSubmitEvent<Schema>) {
@@ -28,13 +27,8 @@ async function checkout(event: FormSubmitEvent<Schema>) {
   try {
     const order = await $fetch<Order>('/api/orders', {
       method: 'POST',
-      body: {
-        items: cart.lines.value,
-        customerName: event.data.customerName,
-        customerEmail: event.data.customerEmail || null,
-      },
+      body: { items: cart.lines.value, customerName: event.data.customerName },
     })
-    history.remember(order.id)
     cart.clear()
     await navigateTo(`/orders/${order.id}`)
   }
@@ -101,15 +95,28 @@ useSeoMeta({ title: 'Cart · Starter Store' })
           </p>
         </template>
 
-        <UForm :schema="schema" :state="form" class="space-y-4" @submit="checkout">
+        <UForm v-if="signedIn" :schema="schema" :state="form" class="space-y-4" @submit="checkout">
           <UFormField label="Full name" name="customerName" required>
-            <UInput v-model="form.customerName" class="w-full" placeholder="Budi Santoso" autocomplete="name" />
+            <UInput v-model="form.customerName" class="w-full" autocomplete="name" />
           </UFormField>
-          <UFormField label="Email" name="customerEmail" hint="Optional, for the receipt">
-            <UInput v-model="form.customerEmail" class="w-full" type="email" placeholder="budi@example.com" autocomplete="email" />
-          </UFormField>
+          <p v-if="user?.email" class="flex items-center gap-2 text-sm text-muted">
+            <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
+            Receipt goes to {{ user.email }}
+          </p>
           <UButton type="submit" block size="lg" :loading="submitting" label="Continue to payment" trailing-icon="i-lucide-arrow-right" />
         </UForm>
+        <div v-else class="space-y-3 text-center">
+          <p class="text-sm text-muted">
+            Sign in to place the order, so you can find it and its payment later.
+          </p>
+          <UButton
+            :to="{ path: '/login', query: { redirect: '/cart' } }"
+            block
+            size="lg"
+            label="Sign in to check out"
+            icon="i-lucide-log-in"
+          />
+        </div>
       </UCard>
     </div>
   </UContainer>

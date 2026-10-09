@@ -14,7 +14,7 @@ export function useAdminFetch<T>(url: string | (() => string), options: UseFetch
 }
 
 export async function signOut() {
-  await $fetch('/auth/logout', { method: 'POST' })
+  await $fetch('/auth/admin/logout', { method: 'POST' })
   useCookie('admin_signed_in').value = null
   await navigateTo('/admin/login')
 }

@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui'
+
 const { count } = useCart()
+const { user, signOut } = useAuth()
 
 const links = [
   { label: 'Shop', to: '/', icon: 'i-lucide-shopping-bag' },
-  { label: 'My orders', to: '/orders', icon: 'i-lucide-receipt' },
+  { label: 'My account', to: '/account', icon: 'i-lucide-circle-user' },
 ]
+
+const userMenu = computed<DropdownMenuItem[][]>(() => [
+  [{ label: user.value?.name ?? '', description: user.value?.email ?? undefined, type: 'label' }],
+  [{ label: 'My account', icon: 'i-lucide-layout-dashboard', to: '/account' }],
+  [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => signOut() }],
+])
 </script>
 
 <template>
@@ -25,6 +34,12 @@ const links = [
         <UChip :text="count" :show="count > 0" size="3xl">
           <UButton to="/cart" icon="i-lucide-shopping-cart" color="neutral" variant="ghost" aria-label="Cart" />
         </UChip>
+        <UDropdownMenu v-if="user" :items="userMenu" :content="{ align: 'end' }">
+          <UButton color="neutral" variant="ghost" class="rounded-full p-1" :aria-label="`Account menu for ${user.name}`">
+            <UAvatar :src="user.pictureUrl ?? undefined" :alt="user.name" size="sm" />
+          </UButton>
+        </UDropdownMenu>
+        <UButton v-else to="/login" label="Sign in" icon="i-lucide-log-in" color="neutral" variant="outline" size="sm" />
       </template>
 
       <template #body>

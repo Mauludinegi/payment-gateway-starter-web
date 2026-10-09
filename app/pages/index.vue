@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Product } from '~/types/api'
+
 const { data: products, status } = useProducts()
 const cart = useCart()
 const toast = useToast()
@@ -7,10 +9,13 @@ const categories = computed(() => ['All', ...new Set(products.value.map(p => p.c
 const category = ref('All')
 const shown = computed(() => category.value === 'All' ? products.value : products.value.filter(p => p.category === category.value))
 
-function addToCart(id: string, name: string) {
-  cart.add(id)
+function addToCart(p: Product) {
+  if (!cart.add(p.id, 1, quantityLimit(p))) {
+    toast.add({ title: `You already have the most you can order of ${p.name}`, color: 'warning', icon: 'i-lucide-info' })
+    return
+  }
   toast.add({
-    title: `${name} added to cart`,
+    title: `${p.name} added to cart`,
     icon: 'i-lucide-check',
     color: 'success',
     actions: [{ label: 'View cart', to: '/cart', color: 'neutral', variant: 'outline' }],
@@ -45,7 +50,7 @@ useSeoMeta({ title: 'Starter Store' })
     </div>
 
     <div v-if="status === 'pending' && !products.length" class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      <USkeleton v-for="i in 6" :key="i" class="h-56" />
+      <USkeleton v-for="i in 6" :key="i" class="h-96" />
     </div>
 
     <UEmpty
@@ -57,22 +62,33 @@ useSeoMeta({ title: 'Starter Store' })
     />
 
     <div v-else class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      <UCard v-for="p in shown" :key="p.id" :ui="{ body: 'flex h-full flex-col' }">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex size-11 items-center justify-center rounded-lg bg-primary/10">
-            <UIcon :name="p.icon" class="size-6 text-primary" />
+      <UCard v-for="p in shown" :key="p.id" class="overflow-hidden" :ui="{ body: 'flex h-full flex-col p-0 sm:p-0' }">
+        <NuxtLink :to="`/products/${p.id}`" tabindex="-1">
+          <ProductMedia :product="p" />
+        </NuxtLink>
+        <div class="flex flex-1 flex-col p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2">
+            <UBadge :label="p.category" color="neutral" variant="subtle" />
+            <StockBadge :stock="p.stock" />
           </div>
-          <UBadge :label="p.category" color="neutral" variant="subtle" />
-        </div>
-        <h2 class="mt-4 font-semibold text-highlighted">
-          {{ p.name }}
-        </h2>
-        <p class="mt-1 flex-1 text-sm text-muted">
-          {{ p.description }}
-        </p>
-        <div class="mt-5 flex items-center justify-between">
-          <span class="text-lg font-semibold">{{ formatIDR(p.price) }}</span>
-          <UButton label="Add to cart" icon="i-lucide-plus" @click="addToCart(p.id, p.name)" />
+          <NuxtLink :to="`/products/${p.id}`" class="mt-3 font-semibold text-highlighted hover:text-primary">
+            {{ p.name }}
+          </NuxtLink>
+          <StarRating v-if="p.reviewCount" :value="p.rating" :count="p.reviewCount" class="mt-1" />
+          <p class="mt-1 line-clamp-3 flex-1 text-sm text-muted">
+            {{ p.description }}
+          </p>
+          <div class="mt-5 flex items-center justify-between">
+            <span class="text-lg font-semibold">{{ formatIDR(p.price) }}</span>
+            <UButton
+              v-if="p.stock === 0"
+              label="Sold out"
+              color="neutral"
+              variant="subtle"
+              disabled
+            />
+            <UButton v-else label="Add to cart" icon="i-lucide-plus" @click="addToCart(p)" />
+          </div>
         </div>
       </UCard>
     </div>

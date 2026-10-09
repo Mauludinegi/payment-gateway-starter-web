@@ -4,7 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { Order } from '~/types/api'
 import type { CartLine } from '~/composables/useCart'
 
-const { data: products } = useProducts()
+const { data: products, refresh: refreshProducts } = useProducts()
 const cart = useCart()
 const { user, signedIn } = useAuth()
 const toast = useToast()
@@ -13,6 +13,8 @@ const rows = computed(() => cart.lines.value
   .map(line => ({ line, product: products.value.find(p => p.id === line.productId) }))
   .filter((r): r is { line: CartLine, product: NonNullable<typeof r.product> } => !!r.product))
 const total = computed(() => rows.value.reduce((sum, r) => sum + r.product.price * r.line.quantity, 0))
+/** Lines asking for more than is left; the server would refuse the order anyway. */
+const shortRows = computed(() => rows.value.filter(r => r.product.stock !== null && r.line.quantity > r.product.stock))
 
 const schema = z.object({
   customerName: z.string().trim().min(2, 'Enter your name').max(100),
@@ -34,6 +36,7 @@ async function checkout(event: FormSubmitEvent<Schema>) {
   }
   catch (error) {
     toast.add({ title: 'Could not place the order', description: problemMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    if ((error as { statusCode?: number }).statusCode === 409) await refreshProducts()
   }
   finally {
     submitting.value = false
@@ -61,23 +64,32 @@ useSeoMeta({ title: 'Cart · Starter Store' })
     <div v-else class="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
       <UCard :ui="{ body: 'divide-y divide-default p-0 sm:p-0' }">
         <div v-for="{ line, product } in rows" :key="line.productId" class="flex flex-wrap items-center gap-4 p-4 sm:p-5">
-          <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <UIcon :name="product.icon" class="size-5 text-primary" />
-          </div>
+          <NuxtLink :to="`/products/${product.id}`" tabindex="-1">
+            <ProductMedia :product="product" variant="thumb" />
+          </NuxtLink>
           <div class="min-w-40 flex-1">
-            <p class="font-medium text-highlighted">
+            <NuxtLink :to="`/products/${product.id}`" class="font-medium text-highlighted hover:text-primary">
               {{ product.name }}
-            </p>
+            </NuxtLink>
             <p class="text-sm text-muted">
               {{ formatIDR(product.price) }}
+            </p>
+            <p v-if="product.stock === 0" class="text-sm text-error">
+              Sold out. Remove it to check out.
+            </p>
+            <p v-else-if="product.stock !== null && line.quantity > product.stock" class="text-sm text-error">
+              Only {{ product.stock }} left. Lower the quantity to check out.
+            </p>
+            <p v-else-if="product.stock !== null && product.stock <= 5" class="text-sm text-warning">
+              Only {{ product.stock }} left
             </p>
           </div>
           <UInputNumber
             :model-value="line.quantity"
             :min="1"
-            :max="MAX_QUANTITY"
+            :max="Math.max(quantityLimit(product), 1)"
             class="w-28"
-            @update:model-value="(v) => cart.setQuantity(line.productId, Number(v) || 1)"
+            @update:model-value="(v) => cart.setQuantity(line.productId, Number(v) || 1, Math.max(quantityLimit(product), 1))"
           />
           <span class="w-28 text-right font-medium">{{ formatIDR(product.price * line.quantity) }}</span>
           <UButton icon="i-lucide-trash-2" color="neutral" variant="ghost" aria-label="Remove" @click="cart.remove(line.productId)" />
@@ -103,7 +115,15 @@ useSeoMeta({ title: 'Cart · Starter Store' })
             <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
             Receipt goes to {{ user.email }}
           </p>
-          <UButton type="submit" block size="lg" :loading="submitting" label="Continue to payment" trailing-icon="i-lucide-arrow-right" />
+          <UButton
+            type="submit"
+            block
+            size="lg"
+            :loading="submitting"
+            :disabled="shortRows.length > 0"
+            label="Continue to payment"
+            trailing-icon="i-lucide-arrow-right"
+          />
         </UForm>
         <div v-else class="space-y-3 text-center">
           <p class="text-sm text-muted">

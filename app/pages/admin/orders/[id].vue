@@ -65,6 +65,14 @@ useSeoMeta({ title: () => `${order.value?.reference ?? 'Order'} · Payments admi
           title="Paid twice"
           description="More than one payment succeeded for this order. The order was marked paid once; refund the extra payment from the gateway dashboard."
         />
+        <UAlert
+          v-if="order.stockShort"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-package-x"
+          title="Paid after the stock ran out"
+          description="This order expired and released its stock, then the payment arrived after someone else bought the last units. Fulfil it from new stock or refund it."
+        />
 
         <div class="grid gap-4 lg:grid-cols-3">
           <UCard>

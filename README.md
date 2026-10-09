@@ -1,8 +1,12 @@
 # Payment Gateway Starter: Web
 
-Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter API](https://github.com/Mauludinegi/payment-gateway-starter) (Spring Boot, Xendit, Midtrans). Customers buy from a small catalogue and pay with a virtual account, QRIS, an e-wallet, or at a retail outlet; the order page updates on its own when the gateway's webhook arrives. Customers sign in with Google (Firebase) before checking out and get a dashboard of their orders. Admins see revenue, every payment attempt, and every webhook.
+Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter API](https://github.com/Mauludinegi/payment-gateway-starter) (Spring Boot, Xendit, Midtrans). Customers buy from a small catalogue and pay with a virtual account, QRIS, an e-wallet, or at a retail outlet; the order page updates on its own when the gateway's webhook arrives. Customers sign in with Google (Firebase) before checking out, get a dashboard of their orders, and can review what they paid for. Admins manage products (images, stock) and reviews, and see revenue, every payment attempt, and every webhook.
 
 <table>
+  <tr>
+    <td><img src="docs/01-store.png" alt="Store with product images, ratings, and stock" width="420"></td>
+    <td><img src="docs/18-product-page.png" alt="Product page with reviews" width="420"></td>
+  </tr>
   <tr>
     <td><img src="docs/05-qris.png" alt="QRIS payment page with countdown" width="420"></td>
     <td><img src="docs/08-account.png" alt="Customer dashboard with order history" width="420"></td>
@@ -14,6 +18,10 @@ Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter
   <tr>
     <td><img src="docs/06-virtual-account.png" alt="Virtual account instructions" width="420"></td>
     <td><img src="docs/11-admin-order-detail.png" alt="Admin order detail with payment attempts and webhooks" width="420"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/16-admin-product-edit.png" alt="Editing a product with an image upload" width="420"></td>
+    <td><img src="docs/17-admin-reviews.png" alt="Review moderation" width="420"></td>
   </tr>
 </table>
 
@@ -33,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, add something to the cart, sign in (without Firebase keys, use the dev sign-in with any name and email), check out, pick a method, and press **Mark paid** in the simulator panel. The admin is at http://localhost:3000/admin; locally the token is `demo-admin-token` unless you set `ADMIN_TOKEN` on the API.
+Open http://localhost:3000, add something to the cart, sign in (without Firebase keys, use the dev sign-in with any name and email), check out, pick a method, and press **Mark paid** in the simulator panel. For the admin at http://localhost:3000/admin, dev sign-in as `admin@example.com`; with Google, list your account in `ADMIN_EMAILS` on the API.
 
 Everything in Docker (API, PostgreSQL, web), with the API repo cloned next to this one:
 
@@ -45,9 +53,11 @@ docker compose up --build
 
 **Store**
 
-- Catalogue with category filter, cart kept in a cookie (so the server-rendered page shows the right count), and checkout with validation. Browsing and the cart are open; checkout asks the customer to sign in first and comes back to the cart. The browser only sends product IDs and quantities; the API prices the order.
+- Catalogue with category filter, product images (or the product's icon), star ratings, and "Only N left" / "Sold out" labels. Each product has its own page with its reviews.
+- Cart kept in a cookie (so the server-rendered page shows the right count), and checkout with validation. Browsing and the cart are open; checkout asks the customer to sign in first and comes back to the cart. The browser only sends product IDs and quantities; the API prices the order. Quantities are capped at the stock that is left; if someone else buys it first, the API refuses the order and the cart shows the new stock.
+- Reviews: customers with a paid order for a product rate it from 1 to 5 stars with an optional comment, and can edit or delete it. Others see a first name and last initial. If an admin hides a review, its author is told.
 - Payment page: choose from the channels the API has configured, then see a grouped VA number with copy, a QRIS code, a retail payment code, or an e-wallet link with a QR for desktop. Each has how-to-pay steps and a countdown.
-- The page polls the order every 3 seconds and switches to "Payment received" when the webhook has been processed. Customers can change method; the API cancels the old one, and an old payment that still arrives is counted.
+- The page listens to the order over Server-Sent Events and switches to "Payment received" as soon as the webhook has been processed; a "Live" dot shows the connection. If the stream drops, it polls every 5 seconds until the browser reconnects. Customers can change method; the API cancels the old one, and an old payment that still arrives is counted.
 - "My account" (sign-in required) shows the profile, totals (orders, paid, awaiting payment, total spent), and the order history from the API. Order pages are only visible to the customer who placed them.
 
 **Admin**
@@ -56,6 +66,10 @@ docker compose up --build
 - Orders: search by reference, name, or email; filter by status; paginate.
 - Order detail: items, every payment attempt with its gateway reference, and the webhooks for it. **Re-check with gateway** pulls the current status, for when a webhook was missed.
 - Webhooks: every verified event with the status the gateway confirmed on re-check and whether it changed anything.
+- Products: create and edit products, upload an image (JPEG, PNG, or WebP up to 2 MB; stored in Supabase Storage by the API), set stock or leave it unlimited, and hide products from sale. If an order changes the stock while the form is open, saving asks you to check the new values instead of overwriting them.
+- Reviews: filter by product or visibility and hide or show each review.
+- Order detail also warns when a payment arrived after the order expired and its stock was sold to someone else.
+- Users: search, filter by role, orders and amount spent per account, and promote or demote admins. You cannot change your own role.
 
 ## How it talks to the API
 
@@ -70,9 +84,13 @@ The browser only calls this app. `server/api/[...path].ts` forwards `/api/**` to
 
 Lax rather than strict, so a customer coming back from an e-wallet app lands on the order page still signed in.
 
-### Admin sign-in
+### Admins
 
-Admin sign-in posts the token to `/auth/admin/login`, which checks it against the API and stores it in an **http-only, same-site strict cookie**. The proxy adds it as a bearer token to `/api/admin/**` requests; browser JavaScript never sees it. A readable `admin_signed_in` flag lets route middleware redirect to the login page, and any 401 clears the session.
+Admins sign in like everyone else; the account's role comes from the API (`/api/auth/me`). The app never decodes tokens: the role only decides whether the "Admin dashboard" menu and the `admin` route middleware let you through, and the API checks the role again on every `/api/admin/**` request (`403` for customers). Promoting someone applies on their next request, without signing in again.
+
+### Live payment page
+
+`/api/orders/{id}/events` goes through the same proxy, which streams the response as it arrives, so the browser's `EventSource` gets the session cookie and nothing else changes. The API sends the order once on connect and again on every change, and closes the stream when it is paid or expired. The API marks the stream `X-Accel-Buffering: no` so nginx-style proxies pass it through; if yours buffers anyway, turn buffering off for that path.
 
 ## Configuration
 
@@ -86,7 +104,7 @@ Admin sign-in posts the token to `/auth/admin/login`, which checks it against th
 
 The Firebase web config is public by design. In the Firebase console, enable **Authentication > Sign-in method > Google** and add your domain under **Authorized domains** (`localhost` is there by default).
 
-Gateway keys, `ADMIN_TOKEN`, sessions (Upstash Redis), and the e-wallet return URL are set on the API; see its README.
+Gateway keys, admin accounts (`ADMIN_EMAILS`), sessions and the catalogue cache (Upstash Redis), product image storage (Supabase Storage), and the e-wallet return URL are set on the API; see its README.
 
 ## Stack
 

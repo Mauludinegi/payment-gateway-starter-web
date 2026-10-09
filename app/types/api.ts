@@ -11,6 +11,57 @@ export interface Product {
   category: string
   icon: string
   price: number
+  /** null means unlimited */
+  stock: number | null
+  imageUrl: string | null
+  /** Average of visible reviews, 0 when there are none */
+  rating: number
+  reviewCount: number
+}
+
+export interface AdminProduct {
+  id: string
+  name: string
+  description: string
+  category: string
+  icon: string
+  price: number
+  active: boolean
+  sortOrder: number
+  stock: number | null
+  imageUrl: string | null
+  updatedAt: string | null
+  version: number
+}
+
+export interface Review {
+  id: string
+  author: string
+  authorPictureUrl: string | null
+  rating: number
+  comment: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MyReview {
+  canReview: boolean
+  review: Review | null
+  /** A moderator hid this review; only its author sees that. */
+  hidden: boolean
+}
+
+export interface AdminReview {
+  id: string
+  productId: string
+  productName: string | null
+  authorName: string | null
+  authorEmail: string | null
+  rating: number
+  comment: string | null
+  hidden: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ChannelOption {
@@ -56,12 +107,27 @@ export interface Order {
   payment: Payment | null
 }
 
+export type Role = 'CUSTOMER' | 'ADMIN'
+
 export interface User {
   id: string
   name: string
   email: string | null
   pictureUrl: string | null
+  role: Role
   createdAt: string
+}
+
+export interface AdminUserRow {
+  id: string
+  name: string
+  email: string | null
+  pictureUrl: string | null
+  role: Role
+  createdAt: string
+  lastLoginAt: string
+  orders: number
+  spent: number
 }
 
 export interface AuthOptions {
@@ -143,6 +209,7 @@ export interface AdminOrderDetail {
   expiresAt: string
   paidAt: string | null
   needsRefund: boolean
+  stockShort: boolean
   items: OrderItem[]
   payments: AdminPayment[]
   webhooks: AdminWebhook[]

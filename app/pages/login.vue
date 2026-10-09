@@ -9,7 +9,7 @@ const { data: options } = await useFetch<AuthOptions>('/api/auth/options', { key
 
 const redirectTo = computed(() => {
   const target = route.query.redirect
-  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') && !target.startsWith('/admin')
+  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
     ? target
     : '/account'
 })

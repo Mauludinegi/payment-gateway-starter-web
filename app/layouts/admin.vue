@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
+
+const { user, signOut } = useAuth()
 
 const links: NavigationMenuItem[] = [
   { label: 'Overview', icon: 'i-lucide-chart-column', to: '/admin', exact: true },
   { label: 'Orders', icon: 'i-lucide-receipt', to: '/admin/orders' },
+  { label: 'Products', icon: 'i-lucide-package', to: '/admin/products' },
+  { label: 'Reviews', icon: 'i-lucide-star', to: '/admin/reviews' },
   { label: 'Webhooks', icon: 'i-lucide-webhook', to: '/admin/webhooks' },
+  { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' },
 ]
 
-const footerLinks: NavigationMenuItem[] = [
-  { label: 'View store', icon: 'i-lucide-store', to: '/' },
-  { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => signOut() },
-]
+const userMenu = computed<DropdownMenuItem[][]>(() => [
+  [{ label: user.value?.name ?? '', description: user.value?.email ?? undefined, type: 'label' }],
+  [
+    { label: 'View store', icon: 'i-lucide-store', to: '/' },
+    { label: 'My account', icon: 'i-lucide-circle-user', to: '/account' },
+  ],
+  [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => signOut() }],
+])
 </script>
 
 <template>
@@ -28,7 +37,26 @@ const footerLinks: NavigationMenuItem[] = [
       </template>
 
       <template #footer="{ collapsed }">
-        <UNavigationMenu :collapsed="collapsed" :items="footerLinks" orientation="vertical" tooltip class="w-full" />
+        <UDropdownMenu
+          v-if="user"
+          :items="userMenu"
+          :content="{ side: 'top', align: 'start', collisionPadding: 12 }"
+          :ui="{ content: collapsed ? 'w-56' : 'w-(--reka-dropdown-menu-trigger-width) min-w-56' }"
+          class="w-full"
+        >
+          <UButton
+            :avatar="{ src: user.pictureUrl ?? undefined, alt: user.name }"
+            :label="collapsed ? undefined : user.name"
+            :trailing-icon="collapsed ? undefined : 'i-lucide-chevrons-up-down'"
+            :square="collapsed"
+            :block="!collapsed"
+            color="neutral"
+            variant="ghost"
+            class="data-[state=open]:bg-elevated"
+            :ui="{ label: 'truncate', trailingIcon: 'ms-auto text-dimmed' }"
+            :aria-label="`Account menu for ${user.name}`"
+          />
+        </UDropdownMenu>
       </template>
     </UDashboardSidebar>
 

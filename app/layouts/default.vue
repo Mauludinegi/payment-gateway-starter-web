@@ -11,7 +11,10 @@ const links = [
 
 const userMenu = computed<DropdownMenuItem[][]>(() => [
   [{ label: user.value?.name ?? '', description: user.value?.email ?? undefined, type: 'label' }],
-  [{ label: 'My account', icon: 'i-lucide-layout-dashboard', to: '/account' }],
+  [
+    { label: 'My account', icon: 'i-lucide-circle-user', to: '/account' },
+    ...(user.value?.role === 'ADMIN' ? [{ label: 'Admin dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' }] : []),
+  ],
   [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => signOut() }],
 ])
 </script>
@@ -30,7 +33,6 @@ const userMenu = computed<DropdownMenuItem[][]>(() => [
 
       <template #right>
         <UColorModeButton />
-        <UButton to="/admin" icon="i-lucide-layout-dashboard" color="neutral" variant="ghost" aria-label="Admin" />
         <UChip :text="count" :show="count > 0" size="3xl">
           <UButton to="/cart" icon="i-lucide-shopping-cart" color="neutral" variant="ghost" aria-label="Cart" />
         </UChip>

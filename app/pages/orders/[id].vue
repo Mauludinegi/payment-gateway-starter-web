@@ -23,14 +23,8 @@ const paying = ref(false)
 const showPicker = computed(() => order.value?.status === 'PENDING_PAYMENT'
   && (changing.value || !payment.value || payment.value.status !== 'PENDING'))
 
-// The webhook updates the order on the server; the page just polls until it changes.
-let poll: ReturnType<typeof setInterval> | undefined
-onMounted(() => {
-  poll = setInterval(() => {
-    if (order.value?.status === 'PENDING_PAYMENT') refresh()
-  }, 3000)
-})
-onBeforeUnmount(() => clearInterval(poll))
+// The webhook updates the order on the server, which pushes it here as it happens.
+const { live } = useOrderStream(id, order, refresh)
 
 watch(() => order.value?.status, (now, before) => {
   if (before === 'PENDING_PAYMENT' && now === 'PAID') {
@@ -88,7 +82,18 @@ useSeoMeta({ title: () => `${order.value?.reference ?? 'Order'} · Starter Store
           {{ order.reference }}
         </h1>
       </div>
-      <UBadge :label="ORDER_STATUS[order.status].label" :color="ORDER_STATUS[order.status].color" variant="subtle" size="lg" />
+      <div class="flex items-center gap-3">
+        <UTooltip
+          v-if="order.status === 'PENDING_PAYMENT'"
+          :text="live ? 'Connected: this page updates the moment the payment arrives' : 'Reconnecting; checking every few seconds meanwhile'"
+        >
+          <span class="flex items-center gap-1.5 text-xs text-muted">
+            <span class="size-2 rounded-full" :class="live ? 'animate-pulse bg-success' : 'bg-warning'" />
+            {{ live ? 'Live' : 'Reconnecting' }}
+          </span>
+        </UTooltip>
+        <UBadge :label="ORDER_STATUS[order.status].label" :color="ORDER_STATUS[order.status].color" variant="subtle" size="lg" />
+      </div>
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">

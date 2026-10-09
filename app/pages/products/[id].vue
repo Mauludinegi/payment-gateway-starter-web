@@ -7,19 +7,22 @@ const cart = useCart()
 const { signedIn } = useAuth()
 const toast = useToast()
 
-const { data: product, error, refresh: refreshProduct } = await useFetch<Product>(`/api/products/${id}`)
+const REVIEWS_PER_PAGE = 5
+const page = ref(1)
+const [
+  { data: product, error, refresh: refreshProduct },
+  { data: reviews, refresh: refreshReviews },
+  { data: mine, refresh: refreshMine },
+] = await Promise.all([
+  useFetch<Product>(`/api/products/${id}`),
+  useFetch<Page<Review>>(`/api/products/${id}/reviews`, {
+    query: computed(() => ({ page: page.value - 1, size: REVIEWS_PER_PAGE })),
+  }),
+  useFetch<MyReview>(`/api/me/reviews/${id}`, { immediate: signedIn.value }),
+])
 if (error.value || !product.value) {
   throw createError({ statusCode: 404, statusMessage: 'Product not found', fatal: true })
 }
-
-const REVIEWS_PER_PAGE = 5
-const page = ref(1)
-const { data: reviews, refresh: refreshReviews } = await useFetch<Page<Review>>(`/api/products/${id}/reviews`, {
-  query: computed(() => ({ page: page.value - 1, size: REVIEWS_PER_PAGE })),
-})
-const { data: mine, refresh: refreshMine } = await useFetch<MyReview>(`/api/me/reviews/${id}`, {
-  immediate: signedIn.value,
-})
 
 const limit = computed(() => product.value ? quantityLimit(product.value) : 0)
 const inCart = computed(() => cart.quantityOf(id))

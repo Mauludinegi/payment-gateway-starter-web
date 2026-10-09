@@ -18,17 +18,18 @@ const productId = ref('ALL')
 const page = ref(1)
 watch([visibility, productId], () => (page.value = 1))
 
-const { data: products } = await useAdminFetch<AdminProduct[]>('/api/admin/products')
+const [{ data: products }, { data, status: loading, refresh }] = await Promise.all([
+  useAdminFetch<AdminProduct[]>('/api/admin/products'),
+  useAdminFetch<Page<AdminReview>>('/api/admin/reviews', {
+    query: computed(() => ({
+      productId: productId.value === 'ALL' ? undefined : productId.value,
+      hidden: visibility.value === 'ALL' ? undefined : visibility.value === 'HIDDEN',
+      page: page.value - 1,
+      size: PAGE_SIZE,
+    })),
+  }),
+])
 const productOptions = computed(() => [{ label: 'All products', value: 'ALL' }, ...(products.value ?? []).map(p => ({ label: p.name, value: p.id }))])
-
-const { data, status: loading, refresh } = await useAdminFetch<Page<AdminReview>>('/api/admin/reviews', {
-  query: computed(() => ({
-    productId: productId.value === 'ALL' ? undefined : productId.value,
-    hidden: visibility.value === 'ALL' ? undefined : visibility.value === 'HIDDEN',
-    page: page.value - 1,
-    size: PAGE_SIZE,
-  })),
-})
 
 const columns: TableColumn<AdminReview>[] = [
   { accessorKey: 'authorName', header: 'Customer' },

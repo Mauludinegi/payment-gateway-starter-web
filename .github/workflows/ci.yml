@@ -18,3 +18,44 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: docker build -t payment-gateway-starter-web .
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Mauludinegi/payment-gateway-starter
+          path: backend
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build backend
+        working-directory: backend
+        run: ./mvnw -B -q package -DskipTests
+      - name: Start backend (in-memory database, simulator gateway)
+        run: |
+          nohup java -jar backend/target/payment-gateway-starter-*.jar > backend.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:8080/api/channels > /dev/null && exit 0; sleep 2; done
+          cat backend.log
+          exit 1
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            playwright-report
+            test-results
+            backend.log
+          retention-days: 7

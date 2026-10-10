@@ -112,8 +112,8 @@ useSeoMeta({ title: 'Cart · Starter Store' })
             <UInput v-model="form.customerName" class="w-full" autocomplete="name" />
           </UFormField>
           <p v-if="user?.email" class="flex items-center gap-2 text-sm text-muted">
-            <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-            Receipt goes to {{ user.email }}
+            <UIcon name="i-lucide-circle-user" class="size-4 shrink-0" />
+            Ordering as {{ user.email }}; the order and its status stay on your account page
           </p>
           <UButton
             type="submit"

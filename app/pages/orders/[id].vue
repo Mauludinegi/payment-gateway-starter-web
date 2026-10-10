@@ -32,10 +32,23 @@ watch(() => order.value?.status, (now, before) => {
   }
 })
 
+// One key per choice of method: a double click or a retry after a network error returns the payment
+// the first request started instead of starting a second one.
+let pending: { channel: string, mobileNumber: string | null, key: string } | null = null
+
 async function startPayment(channel: string, mobileNumber: string | null) {
+  if (paying.value) return
+  if (pending?.channel !== channel || pending.mobileNumber !== mobileNumber) {
+    pending = { channel, mobileNumber, key: crypto.randomUUID() }
+  }
   paying.value = true
   try {
-    order.value = await $fetch<Order>(`/api/orders/${id}/payments`, { method: 'POST', body: { channel, mobileNumber } })
+    order.value = await $fetch<Order>(`/api/orders/${id}/payments`, {
+      method: 'POST',
+      body: { channel, mobileNumber },
+      headers: { 'Idempotency-Key': pending.key },
+    })
+    pending = null
     changing.value = false
   }
   catch (e) {
@@ -46,6 +59,15 @@ async function startPayment(channel: string, mobileNumber: string | null) {
     paying.value = false
   }
 }
+
+// The stream only fires on changes; while the gateway confirms, poll so the instructions show up.
+const confirming = computed(() => payment.value?.status === 'PENDING' && payment.value.confirming)
+let confirmTimer: ReturnType<typeof setInterval> | undefined
+watch(confirming, (on) => {
+  clearInterval(confirmTimer)
+  if (on) confirmTimer = setInterval(() => refresh(), 5000)
+}, { immediate: true })
+onBeforeUnmount(() => clearInterval(confirmTimer))
 
 const simulating = ref<string | null>(null)
 async function simulate(action: 'pay' | 'fail' | 'expire') {
@@ -166,7 +188,16 @@ useSeoMeta({ title: () => `${order.value?.reference ?? 'Order'} · Starter Store
             </div>
           </template>
 
-          <PaymentInstructions :payment="payment" :amount="order.amount" />
+          <UAlert
+            v-if="confirming"
+            color="info"
+            variant="subtle"
+            icon="i-lucide-loader-circle"
+            title="Confirming with the payment provider"
+            description="The provider did not answer in time. We are checking whether your payment was created; the instructions appear here as soon as it is. Please do not start another payment meanwhile."
+            data-testid="payment-confirming"
+          />
+          <PaymentInstructions v-else :payment="payment" :amount="order.amount" />
 
           <template #footer>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -174,7 +205,7 @@ useSeoMeta({ title: () => `${order.value?.reference ?? 'Order'} · Starter Store
                 <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
                 Waiting for payment; this page updates automatically.
               </p>
-              <UButton label="Change payment method" color="neutral" variant="outline" size="sm" @click="changing = true" />
+              <UButton v-if="!confirming" label="Change payment method" color="neutral" variant="outline" size="sm" @click="changing = true" />
             </div>
           </template>
         </UCard>

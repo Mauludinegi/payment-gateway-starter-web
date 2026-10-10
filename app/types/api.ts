@@ -88,6 +88,8 @@ export interface Payment {
   status: PaymentStatus
   instructionType: InstructionType | null
   instructionValue: string | null
+  /** The gateway has not confirmed the payment yet (its create call timed out); instructions follow. */
+  confirming: boolean
   createdAt: string
   expiresAt: string
 }
@@ -219,6 +221,15 @@ export interface AdminWebhookRow extends AdminWebhook {
   orderId: string | null
   orderReference: string | null
   channel: string | null
+  providerRef: string | null
+  /** Matched no payment yet; replayed until it does. */
+  queued: boolean
+}
+
+/** Whether the deployment can move real money. */
+export interface Environment {
+  sandbox: boolean
+  testMode: Partial<Record<Provider, boolean>>
 }
 
 /** RFC 9457 problem detail returned by the backend on errors. */

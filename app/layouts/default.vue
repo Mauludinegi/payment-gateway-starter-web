@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import type { Environment } from '~/types/api'
 
 const { count } = useCart()
+// Shown only when the backend reports test credentials for every gateway it routes payments to.
+const { data: environment } = useFetch<Environment>('/api/environment', { key: 'environment', lazy: true })
 const { user, signOut } = useAuth()
 
 const links = [
@@ -21,6 +24,14 @@ const userMenu = computed<DropdownMenuItem[][]>(() => [
 
 <template>
   <div>
+    <div
+      v-if="environment?.sandbox"
+      class="flex items-center justify-center gap-2 bg-warning/15 px-4 py-1.5 text-center text-sm font-medium text-warning"
+      data-testid="sandbox-banner"
+    >
+      <UIcon name="i-lucide-flask-conical" class="size-4 shrink-0" />
+      Sandbox demo, no real money. Payments use gateway test modes and the simulator.
+    </div>
     <UHeader title="Starter Store" to="/">
       <template #title>
         <span class="flex items-center gap-2 font-semibold">

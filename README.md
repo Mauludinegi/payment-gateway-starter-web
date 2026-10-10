@@ -1,5 +1,9 @@
 # Payment Gateway Starter: Web
 
+**Live demo:** [payment-gateway-starter-web.vercel.app](https://payment-gateway-starter-web.vercel.app) · **API:** [payment-gateway-starter.vercel.app](https://payment-gateway-starter.vercel.app/api/channels) · **API docs:** [Swagger UI](https://payment-gateway-starter.vercel.app/swagger-ui.html) · **API repo:** [payment-gateway-starter](https://github.com/Mauludinegi/payment-gateway-starter)
+
+Sandbox demo, no real money: the demo uses the Midtrans sandbox and a Xendit test key (see the API README for which channels were tried against them). The banner at the top only appears when the API reports test credentials for every gateway it routes payments to (`GET /api/environment`).
+
 Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter API](https://github.com/Mauludinegi/payment-gateway-starter) (Spring Boot, Xendit, Midtrans). Customers buy from a small catalogue and pay with a virtual account, QRIS, an e-wallet, or at a retail outlet; the order page updates on its own when the gateway's webhook arrives. Customers sign in with Google (Firebase) before checking out, get a dashboard of their orders, and can review what they paid for. Admins manage products (images, stock) and reviews, and see revenue, every payment attempt, and every webhook.
 
 <table>
@@ -57,6 +61,7 @@ docker compose up --build
 - Cart kept in a cookie (so the server-rendered page shows the right count), and checkout with validation. Browsing and the cart are open; checkout asks the customer to sign in first and comes back to the cart. The browser only sends product IDs and quantities; the API prices the order. Quantities are capped at the stock that is left; if someone else buys it first, the API refuses the order and the cart shows the new stock.
 - Reviews: customers with a paid order for a product rate it from 1 to 5 stars with an optional comment, and can edit or delete it. Others see a first name and last initial. If an admin hides a review, its author is told.
 - Payment page: choose from the channels the API has configured, then see a grouped VA number with copy, a QRIS code, a retail payment code, or an e-wallet link with a QR for desktop. Each has how-to-pay steps and a countdown.
+- Starting a payment sends an `Idempotency-Key` (one per choice of method), so a double click or a retry after a dropped connection gets the payment the first request started. If the gateway did not answer in time, the page says the payment is being confirmed and polls until the API has the instructions.
 - The page listens to the order over Server-Sent Events and switches to "Payment received" as soon as the webhook has been processed; a "Live" dot shows the connection. If the stream drops, it polls every 5 seconds until the browser reconnects. Customers can change method; the API cancels the old one, and an old payment that still arrives is counted.
 - "My account" (sign-in required) shows the profile, totals (orders, paid, awaiting payment, total spent), and the order history from the API. Order pages are only visible to the customer who placed them.
 
@@ -65,7 +70,7 @@ docker compose up --build
 - Overview: revenue, orders, conversion, expired orders, revenue for the last 7 days, and successful payments by method. Orders paid twice (old method paid after switching) are flagged for refund.
 - Orders: search by reference, name, or email; filter by status; paginate.
 - Order detail: items, every payment attempt with its gateway reference, and the webhooks for it. **Re-check with gateway** pulls the current status, for when a webhook was missed.
-- Webhooks: every verified event with the status the gateway confirmed on re-check and whether it changed anything.
+- Webhooks: every verified event with the status the gateway confirmed on re-check and whether it changed anything. Events that arrived before their payment was known show as queued until the API replays them.
 - Products: create and edit products, upload an image (JPEG, PNG, or WebP up to 2 MB; stored in Supabase Storage by the API), set stock or leave it unlimited, and hide products from sale. If an order changes the stock while the form is open, saving asks you to check the new values instead of overwriting them.
 - Reviews: filter by product or visibility and hide or show each review.
 - Order detail also warns when a payment arrived after the order expired and its stock was sold to someone else.
@@ -106,9 +111,22 @@ The Firebase web config is public by design. In the Firebase console, enable **A
 
 Gateway keys, admin accounts (`ADMIN_EMAILS`), sessions and the catalogue cache (Upstash Redis), product image storage (Supabase Storage), and the e-wallet return URL are set on the API; see its README.
 
+## Tests
+
+End-to-end tests (Playwright) run the checkout in a real browser against the API on its simulator gateway: sign-in before checkout, the sandbox label, paying an order with a virtual account until the page shows it paid, and a double click plus two racing requests with the same `Idempotency-Key` starting one payment.
+
+```bash
+# API running on :8080 with no gateway keys (simulator), then:
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+CI runs typecheck, build, and a Docker build, and the end-to-end tests against the API built from its repository.
+
 ## Stack
 
-Nuxt 4, Nuxt UI 4, Tailwind CSS 4, TypeScript, Zod, Firebase Authentication, `qrcode`. CI runs typecheck, build, and a Docker build.
+Nuxt 4, Nuxt UI 4, Tailwind CSS 4, TypeScript, Zod, Firebase Authentication, `qrcode`, Playwright.
 
 ## License
 

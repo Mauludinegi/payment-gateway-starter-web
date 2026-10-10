@@ -38,7 +38,7 @@ useSeoMeta({ title: 'Webhooks · Payments admin' })
         color="neutral"
         variant="subtle"
         icon="i-lucide-shield-check"
-        description="Only events that passed signature or token verification are stored. Redelivered events are acknowledged without being applied again, and the status shown is what the gateway reported when re-checked, not what the payload claimed."
+        description="Only events that passed signature or token verification are stored. Redelivered events are acknowledged without being applied again, and the status shown is what the gateway reported when re-checked, not what the payload claimed. An event that arrives before its payment is known is queued and replayed, not dropped."
       />
 
       <UTable :data="data?.items ?? []" :columns="columns" :loading="status === 'pending'" class="flex-1">
@@ -68,6 +68,12 @@ useSeoMeta({ title: 'Webhooks · Payments admin' })
         <template #outcome-cell="{ row }">
           <UTooltip v-if="row.original.outcome" :text="WEBHOOK_OUTCOME[row.original.outcome].hint">
             <UBadge :label="WEBHOOK_OUTCOME[row.original.outcome].label" :color="WEBHOOK_OUTCOME[row.original.outcome].color" variant="outline" />
+          </UTooltip>
+          <UTooltip v-else-if="row.original.queued" :text="`No payment matches ${row.original.providerRef ?? 'this event'} yet; it is replayed every run of the background job.`">
+            <UBadge label="Queued" color="warning" variant="outline" />
+          </UTooltip>
+          <UTooltip v-else-if="!row.original.paymentId" text="No matching payment turned up within 3 days; the event was set aside.">
+            <UBadge label="Unmatched" color="neutral" variant="outline" />
           </UTooltip>
         </template>
         <template #empty>

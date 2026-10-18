@@ -63,36 +63,62 @@ useSeoMeta({ title: 'Cart · Starter Store' })
 
     <div v-else class="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
       <UCard :ui="{ body: 'divide-y divide-default p-0 sm:p-0' }">
-        <div v-for="{ line, product } in rows" :key="line.productId" class="flex flex-wrap items-center gap-4 p-4 sm:p-5">
-          <NuxtLink :to="`/products/${product.id}`" tabindex="-1">
-            <ProductMedia :product="product" variant="thumb" />
-          </NuxtLink>
-          <div class="min-w-40 flex-1">
-            <NuxtLink :to="`/products/${product.id}`" class="font-medium text-highlighted hover:text-primary">
-              {{ product.name }}
+        <div v-for="{ line, product } in rows" :key="line.productId" class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5">
+          <div class="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+            <NuxtLink :to="`/products/${product.id}`" tabindex="-1" class="shrink-0">
+              <ProductMedia :product="product" variant="thumb" class="size-16 sm:size-20 rounded-lg object-cover" />
             </NuxtLink>
-            <p class="text-sm text-muted">
-              {{ formatIDR(product.price) }}
-            </p>
-            <p v-if="product.stock === 0" class="text-sm text-error">
-              Sold out. Remove it to check out.
-            </p>
-            <p v-else-if="product.stock !== null && line.quantity > product.stock" class="text-sm text-error">
-              Only {{ product.stock }} left. Lower the quantity to check out.
-            </p>
-            <p v-else-if="product.stock !== null && product.stock <= 5" class="text-sm text-warning">
-              Only {{ product.stock }} left
-            </p>
+            <div class="flex-1 min-w-0">
+              <NuxtLink :to="`/products/${product.id}`" class="font-medium text-sm sm:text-base text-highlighted hover:text-primary line-clamp-2">
+                {{ product.name }}
+              </NuxtLink>
+              <p class="text-xs sm:text-sm text-muted mt-0.5">
+                {{ formatIDR(product.price) }}
+              </p>
+              <p v-if="product.stock === 0" class="text-xs sm:text-sm text-error mt-1">
+                Sold out. Remove it to check out.
+              </p>
+              <p v-else-if="product.stock !== null && line.quantity > product.stock" class="text-xs sm:text-sm text-error mt-1">
+                Only {{ product.stock }} left. Lower the quantity to check out.
+              </p>
+              <p v-else-if="product.stock !== null && product.stock <= 5" class="text-xs sm:text-sm text-warning mt-1">
+                Only {{ product.stock }} left
+              </p>
+            </div>
+            <!-- Delete button on mobile (top right) -->
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              class="sm:hidden text-muted hover:text-error shrink-0 -mr-1"
+              aria-label="Remove"
+              @click="cart.remove(line.productId)"
+            />
           </div>
-          <UInputNumber
-            :model-value="line.quantity"
-            :min="1"
-            :max="Math.max(quantityLimit(product), 1)"
-            class="w-28"
-            @update:model-value="(v) => cart.setQuantity(line.productId, Number(v) || 1, Math.max(quantityLimit(product), 1))"
-          />
-          <span class="w-28 text-right font-medium">{{ formatIDR(product.price * line.quantity) }}</span>
-          <UButton icon="i-lucide-trash-2" color="neutral" variant="ghost" aria-label="Remove" @click="cart.remove(line.productId)" />
+
+          <!-- Bottom row on mobile / Inline right on desktop -->
+          <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-default/40 sm:shrink-0">
+            <UInputNumber
+              :model-value="line.quantity"
+              :min="1"
+              :max="Math.max(quantityLimit(product), 1)"
+              class="w-24 sm:w-28"
+              @update:model-value="(v) => cart.setQuantity(line.productId, Number(v) || 1, Math.max(quantityLimit(product), 1))"
+            />
+            <span class="sm:w-28 text-right font-semibold text-sm sm:text-base text-highlighted">
+              {{ formatIDR(product.price * line.quantity) }}
+            </span>
+            <!-- Delete button on desktop -->
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              class="hidden sm:inline-flex text-muted hover:text-error"
+              aria-label="Remove"
+              @click="cart.remove(line.productId)"
+            />
+          </div>
         </div>
       </UCard>
 

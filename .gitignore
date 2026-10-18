@@ -17,3 +17,4 @@ dist
 # Playwright
 /test-results
 /playwright-report
+performance.json

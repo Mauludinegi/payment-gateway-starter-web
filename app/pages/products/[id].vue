@@ -131,10 +131,12 @@ useSeoMeta({
         <div v-if="product.stock === 0" class="mt-6">
           <UAlert color="error" variant="subtle" icon="i-lucide-package-x" title="Sold out" description="Check back later; stock comes back when unpaid orders expire." />
         </div>
-        <div v-else class="mt-6 flex flex-wrap items-center gap-3">
-          <UInputNumber v-model="quantity" :min="1" :max="limit" class="w-32" aria-label="Quantity" />
-          <UButton label="Add to cart" icon="i-lucide-plus" size="lg" @click="addToCart" />
-          <UButton v-if="inCart" to="/cart" :label="`In cart: ${inCart}`" color="neutral" variant="ghost" trailing-icon="i-lucide-arrow-right" />
+        <div v-else class="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <UInputNumber v-model="quantity" :min="1" :max="limit" class="w-28 sm:w-32" aria-label="Quantity" />
+            <UButton label="Add to cart" icon="i-lucide-plus" size="lg" class="flex-1 sm:flex-none justify-center" @click="addToCart" />
+          </div>
+          <UButton v-if="inCart" to="/cart" :label="`In cart: ${inCart}`" color="neutral" variant="ghost" trailing-icon="i-lucide-arrow-right" class="justify-center self-start sm:self-auto" />
         </div>
         <p v-if="product.stock !== null && product.stock > 0" class="mt-2 text-xs text-muted">
           Stock is held for you once you place the order, and released if it is not paid in time.

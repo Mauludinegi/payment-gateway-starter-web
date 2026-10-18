@@ -28,23 +28,24 @@ useSeoMeta({ title: 'Starter Store' })
 <template>
   <UContainer class="py-10 sm:py-14">
     <div class="max-w-2xl">
-      <UBadge label="Pay with VA, QRIS, e-wallets, or retail outlets" variant="subtle" icon="i-lucide-shield-check" />
-      <h1 class="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+      <UBadge label="Pay with VA, QRIS, e-wallets, or retail outlets" variant="subtle" icon="i-lucide-shield-check" class="max-w-full truncate" />
+      <h1 class="mt-3 sm:mt-4 text-2xl font-bold tracking-tight sm:text-4xl">
         Courses, templates, and reviews for developers
       </h1>
-      <p class="mt-3 text-lg text-muted">
+      <p class="mt-2 sm:mt-3 text-sm sm:text-lg text-muted">
         Add to cart, pay with an Indonesian payment method, and watch the order turn paid the moment the gateway confirms it.
       </p>
     </div>
 
-    <div class="mt-8 flex flex-wrap gap-2">
+    <div class="mt-6 sm:mt-8 flex flex-wrap gap-2">
       <UButton
         v-for="c in categories"
         :key="c"
         :label="c"
         size="sm"
+        class="rounded-full px-3.5"
         :color="c === category ? 'primary' : 'neutral'"
-        :variant="c === category ? 'solid' : 'outline'"
+        :variant="c === category ? 'solid' : 'subtle'"
         @click="category = c"
       />
     </div>
@@ -78,16 +79,17 @@ useSeoMeta({ title: 'Starter Store' })
           <p class="mt-1 line-clamp-3 flex-1 text-sm text-muted">
             {{ p.description }}
           </p>
-          <div class="mt-5 flex items-center justify-between">
-            <span class="text-lg font-semibold">{{ formatIDR(p.price) }}</span>
+          <div class="mt-5 flex items-center justify-between gap-2">
+            <span class="text-base sm:text-lg font-bold text-highlighted">{{ formatIDR(p.price) }}</span>
             <UButton
               v-if="p.stock === 0"
               label="Sold out"
               color="neutral"
               variant="subtle"
               disabled
+              size="sm"
             />
-            <UButton v-else label="Add to cart" icon="i-lucide-plus" @click="addToCart(p)" />
+            <UButton v-else label="Add to cart" icon="i-lucide-plus" size="sm" class="rounded-lg" @click="addToCart(p)" />
           </div>
         </div>
       </UCard>

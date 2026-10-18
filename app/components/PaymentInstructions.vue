@@ -48,11 +48,11 @@ async function copy(value: string) {
       <p class="text-sm text-muted">
         {{ payment.instructionType === 'PAYMENT_CODE' ? 'Payment code' : 'Virtual account number' }}
       </p>
-      <div class="mt-1 flex flex-wrap items-center gap-3">
-        <span class="font-mono text-2xl font-bold tracking-wider text-highlighted sm:text-3xl">
+      <div class="mt-1 flex items-center justify-between gap-2 p-3 rounded-xl bg-elevated/60 border border-default/50">
+        <span class="font-mono text-lg sm:text-2xl font-bold tracking-wider text-highlighted select-all break-all">
           {{ groupDigits(payment.instructionValue ?? '') }}
         </span>
-        <UButton icon="i-lucide-copy" label="Copy" color="neutral" variant="outline" size="sm" @click="copy(payment.instructionValue ?? '')" />
+        <UButton icon="i-lucide-copy" label="Salin" color="primary" variant="soft" size="sm" class="shrink-0" @click="copy(payment.instructionValue ?? '')" />
       </div>
     </div>
 

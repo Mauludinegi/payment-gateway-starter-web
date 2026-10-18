@@ -238,3 +238,26 @@ export interface Problem {
   detail?: string
   status?: number
 }
+
+export interface ChatRoom {
+  id: string
+  customerId: string
+  customerName: string
+  customerEmail: string | null
+  customerPictureUrl: string | null
+  status: 'OPEN' | 'CLOSED'
+  createdAt: string
+  lastMessageAt: string
+  lastMessageText: string | null
+}
+
+export interface ChatMessage {
+  id: string
+  roomId: string
+  senderId: string
+  senderRole: 'CUSTOMER' | 'ADMIN'
+  senderName: string
+  text: string
+  createdAt: string
+}
+

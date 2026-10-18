@@ -1,16 +1,45 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
+import type { ChatRoom } from '~/types/api'
 
 const { user, signOut } = useAuth()
 
-const links: NavigationMenuItem[] = [
+const { data: adminRooms, refresh: refreshRooms } = await useAdminFetch<ChatRoom[]>('/api/admin/chat/rooms')
+
+let roomTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  // Periodically refresh chat rooms for open badge count in sidebar menu
+  roomTimer = setInterval(() => {
+    refreshRooms()
+  }, 4000)
+})
+
+onUnmounted(() => {
+  if (roomTimer) {
+    clearInterval(roomTimer)
+    roomTimer = null
+  }
+})
+
+const activeChatCount = computed(() => {
+  return adminRooms.value?.filter(r => r.status === 'OPEN').length ?? 0
+})
+
+const links = computed<NavigationMenuItem[]>(() => [
   { label: 'Overview', icon: 'i-lucide-chart-column', to: '/admin', exact: true },
+  {
+    label: 'Live Chat',
+    icon: 'i-lucide-messages-square',
+    to: '/admin/chat',
+    badge: activeChatCount.value > 0 ? { label: String(activeChatCount.value), color: 'primary', variant: 'subtle', size: 'xs' } : undefined,
+  },
   { label: 'Orders', icon: 'i-lucide-receipt', to: '/admin/orders' },
   { label: 'Products', icon: 'i-lucide-package', to: '/admin/products' },
   { label: 'Reviews', icon: 'i-lucide-star', to: '/admin/reviews' },
   { label: 'Webhooks', icon: 'i-lucide-webhook', to: '/admin/webhooks' },
   { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' },
-]
+])
 
 const userMenu = computed<DropdownMenuItem[][]>(() => [
   [{ label: user.value?.name ?? '', description: user.value?.email ?? undefined, type: 'label' }],

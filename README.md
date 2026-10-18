@@ -1,10 +1,10 @@
 # Payment Gateway Starter: Web
 
-**Live demo:** [payment-gateway-starter-web.vercel.app](https://payment-gateway-starter-web.vercel.app) · **API:** [payment-gateway-starter.vercel.app](https://payment-gateway-starter.vercel.app/api/channels) · **API docs:** [Swagger UI](https://payment-gateway-starter.vercel.app/swagger-ui.html) · **API repo:** [payment-gateway-starter](https://github.com/Mauludinegi/payment-gateway-starter)
+**Live demo:** [payment-gateway-starter-web.vercel.app](https://payment-gateway-starter-web.vercel.app) · **API:** [api.solutionsgie.online](https://api.solutionsgie.online/api/channels) · **API docs:** [Swagger UI](https://api.solutionsgie.online/swagger-ui.html) · **API repo:** [payment-gateway-starter](https://github.com/Mauludinegi/payment-gateway-starter)
 
 Sandbox demo, no real money: the demo uses the Midtrans sandbox and a Xendit test key (see the API README for which channels were tried against them). The banner at the top only appears when the API reports test credentials for every gateway it routes payments to (`GET /api/environment`).
 
-Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter API](https://github.com/Mauludinegi/payment-gateway-starter) (Spring Boot, Xendit, Midtrans). Customers buy from a small catalogue and pay with a virtual account, QRIS, an e-wallet, or at a retail outlet; the order page updates on its own when the gateway's webhook arrives. Customers sign in with Google (Firebase) before checking out, get a dashboard of their orders, and can review what they paid for. Admins manage products (images, stock) and reviews, and see revenue, every payment attempt, and every webhook.
+Nuxt 4 + Nuxt UI storefront and admin dashboard for the [payment gateway starter API](https://github.com/Mauludinegi/payment-gateway-starter) (Spring Boot, Xendit, Midtrans). Customers buy from a small catalogue and pay with a virtual account, QRIS, an e-wallet, or at a retail outlet; the order page updates on its own when the gateway's webhook arrives. Customers sign in with Google (Firebase) before checking out, get a dashboard of their orders, and can review what they paid for. Includes **real-time customer live chat via Server-Sent Events (SSE)**, **RabbitMQ message distribution**, and **Firebase Cloud Messaging (FCM) web push notifications**. Admins manage products (images, stock), review moderation, live support chat with status filtering, and see revenue, every payment attempt, and every webhook.
 
 <table>
   <tr>
@@ -64,6 +64,7 @@ docker compose up --build
 - Starting a payment sends an `Idempotency-Key` (one per choice of method), so a double click or a retry after a dropped connection gets the payment the first request started. If the gateway did not answer in time, the page says the payment is being confirmed and polls until the API has the instructions.
 - The page listens to the order over Server-Sent Events and switches to "Payment received" as soon as the webhook has been processed; a "Live" dot shows the connection. If the stream drops, it polls every 5 seconds until the browser reconnects. Customers can change method; the API cancels the old one, and an old payment that still arrives is counted.
 - "My account" (sign-in required) shows the profile, totals (orders, paid, awaiting payment, total spent), and the order history from the API. Order pages are only visible to the customer who placed them.
+- **Customer Live Chat Widget**: Floating responsive live chat launcher on every page (desktop popover and mobile bottom sheet). Real-time message streaming via Server-Sent Events (SSE), audio chime on new agent replies, unread message badges, automatic reconnection resilience, and native browser push notification prompts via Firebase Cloud Messaging (FCM).
 
 **Admin**
 
@@ -75,6 +76,7 @@ docker compose up --build
 - Reviews: filter by product or visibility and hide or show each review.
 - Order detail also warns when a payment arrived after the order expired and its stock was sold to someone else.
 - Users: search, filter by role, orders and amount spent per account, and promote or demote admins. You cannot change your own role.
+- **Admin Live Chat Inbox (`/admin/chat`)**: Split-view support workspace for managing customer conversations in real-time. Live unread counter badge on the sidebar navigation, search across visitor names, emails, and messages, status filter tabs (**Semua**, **Open**, **Closed**) with live item counters, sound alerts on incoming customer messages, and administrative actions to close sessions or purge spam conversations.
 
 ## How it talks to the API
 
@@ -97,6 +99,12 @@ Admins sign in like everyone else; the account's role comes from the API (`/api/
 
 `/api/orders/{id}/events` goes through the same proxy, which streams the response as it arrives, so the browser's `EventSource` gets the session cookie and nothing else changes. The API sends the order once on connect and again on every change, and closes the stream when it is paid or expired. The API marks the stream `X-Accel-Buffering: no` so nginx-style proxies pass it through; if yours buffers anyway, turn buffering off for that path.
 
+### Real-time Live Chat, RabbitMQ, and Push Notifications (FCM)
+
+- **Server-Sent Events (SSE) Proxy**: `/api/chat/rooms/{id}/events` and `/api/admin/chat/rooms/{id}/events` stream live message updates with `Cache-Control: no-cache` and `X-Accel-Buffering: no` through the Nuxt server proxy, preserving http-only session auth.
+- **RabbitMQ / CloudAMQP Message Broker**: The Spring Boot backend publishes chat events to a `chat.events` topic exchange, routing them to `chat.sse` (broadcasting to open SSE streams across clustered API instances) and `chat.fcm` (triggering background push notifications).
+- **Firebase Cloud Messaging Service Worker (`public/firebase-messaging-sw.js`)**: When visitors grant notification permissions, device registration tokens are saved to the backend (`POST /api/chat/fcm-token`). Incoming support messages trigger native desktop and mobile push notifications via the FCM HTTP v1 API, allowing users to receive alerts even when their browser tab is inactive.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -106,8 +114,9 @@ Admins sign in like everyone else; the account's role comes from the API (`/api/
 | `NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | | e.g. `your-project.firebaseapp.com` |
 | `NUXT_PUBLIC_FIREBASE_PROJECT_ID` | | Must match `FIREBASE_PROJECT_ID` on the API |
 | `NUXT_PUBLIC_FIREBASE_APP_ID` | | |
+| `NUXT_PUBLIC_FIREBASE_VAPID_KEY` | | Firebase Web Push VAPID key for FCM background notifications |
 
-The Firebase web config is public by design. In the Firebase console, enable **Authentication > Sign-in method > Google** and add your domain under **Authorized domains** (`localhost` is there by default).
+The Firebase web config is public by design. In the Firebase console, enable **Authentication > Sign-in method > Google** and add your domain under **Authorized domains** (`localhost` is there by default). Under **Project Settings > Cloud Messaging > Web configuration**, generate a Web Push Certificate key pair for `NUXT_PUBLIC_FIREBASE_VAPID_KEY`.
 
 Gateway keys, admin accounts (`ADMIN_EMAILS`), sessions and the catalogue cache (Upstash Redis), product image storage (Supabase Storage), and the e-wallet return URL are set on the API; see its README.
 
@@ -126,7 +135,7 @@ CI runs typecheck, build, and a Docker build, and the end-to-end tests against t
 
 ## Stack
 
-Nuxt 4, Nuxt UI 4, Tailwind CSS 4, TypeScript, Zod, Firebase Authentication, `qrcode`, Playwright.
+Nuxt 4, Nuxt UI 4, Tailwind CSS 4, TypeScript, Zod, Firebase Authentication, Firebase Cloud Messaging (FCM HTTP v1 Web Push), Server-Sent Events (SSE), Service Worker, Playwright.
 
 ## License
 
